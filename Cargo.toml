@@ -1,0 +1,15 @@
+[package]
+name = "chain-if"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.68"
+
+description = "Lightweight, no_std iterator extensions for conditional chaining with optional lazy evaluation"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/Imagination12357/chain-if"
+
+keywords = ["iterator", "conditional", "chain", "lazy", "no-std"]
+categories = ["rust-patterns", "no-std"]
+
+[dependencies]
