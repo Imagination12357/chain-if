@@ -13,13 +13,14 @@ Append iterators conditionally without breaking method chains. Supports both eag
 ```rust
 use chain_if::ChainIfExt;
 
-let result: Vec<_> = (0..3)
+let values: Vec<_> = (0..3)
     .chain_if(true, 3..5)
     .chain_if_lazy(false, || 5..7)
-    .chain_if_else(true, 7..9, 9..11)
+    .chain_if_else(true, 7..9, [9, 10])
+    .chain_if_else_lazy(false, || 11..13, || [13, 14])
     .collect();
 
-assert_eq!(result, [0, 1, 2, 3, 4, 7, 8]);
+assert_eq!(values, [0, 1, 2, 3, 4, 7, 8, 13, 14]);
 ```
 
 ## Methods
