@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::unnecessary_fold)]
-    fn delegated_forward_methods() {
+    fn consuming_methods_work() {
         assert_eq!((0..2).chain_if(true, 2..5).count(), 5);
         assert_eq!((0..2).chain_if_lazy(true, || 2..5).last(), Some(4));
         assert_eq!((0..2).chain_if(true, 2..5).fold(0, |a, x| a + x), 10);
@@ -532,7 +532,7 @@ mod tests {
     }
 
     #[test]
-    fn delegated_reverse_methods() {
+    fn reverse_methods_work() {
         let mut it = (0..2).chain_if(true, 2..5);
         assert_eq!(it.nth_back(1), Some(3));
         assert_eq!(it.rfind(|x| *x == 1), Some(1));
