@@ -8,7 +8,6 @@
 
 use core::fmt;
 use core::iter::{Chain, Flatten, FusedIterator, OnceWith};
-use core::marker::PhantomData;
 use core::option::IntoIter as OptionIntoIter;
 
 /// The optional tail used by [`ChainIfExt::chain_if`] and
@@ -137,7 +136,6 @@ where
     I: IntoIterator,
 {
     inner: Flatten<Flatten<OptionIntoIter<OnceWith<F>>>>,
-    marker: PhantomData<fn() -> I>,
 }
 
 impl<F, I> ChainIfLazyTail<F, I>
@@ -152,7 +150,6 @@ where
                 .into_iter()
                 .flatten()
                 .flatten(),
-            marker: PhantomData,
         }
     }
 }
@@ -166,7 +163,6 @@ where
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
-            marker: PhantomData,
         }
     }
 }
