@@ -91,46 +91,11 @@ where
         self.inner.last()
     }
 
-    fn for_each<F>(self, f: F)
-    where
-        F: FnMut(Self::Item),
-    {
-        self.inner.for_each(f)
-    }
-
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
     {
         self.inner.find(predicate)
-    }
-
-    fn find_map<B, F>(&mut self, f: F) -> Option<B>
-    where
-        F: FnMut(Self::Item) -> Option<B>,
-    {
-        self.inner.find_map(f)
-    }
-
-    fn position<P>(&mut self, predicate: P) -> Option<usize>
-    where
-        P: FnMut(Self::Item) -> bool,
-    {
-        self.inner.position(predicate)
-    }
-
-    fn any<P>(&mut self, predicate: P) -> bool
-    where
-        P: FnMut(Self::Item) -> bool,
-    {
-        self.inner.any(predicate)
-    }
-
-    fn all<P>(&mut self, predicate: P) -> bool
-    where
-        P: FnMut(Self::Item) -> bool,
-    {
-        self.inner.all(predicate)
     }
 }
 
@@ -141,10 +106,6 @@ where
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back()
-    }
-
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.inner.nth_back(n)
     }
 
     fn rfold<B, F>(self, init: B, f: F) -> B
@@ -257,46 +218,11 @@ where
         self.inner.last()
     }
 
-    fn for_each<Func>(self, f: Func)
-    where
-        Func: FnMut(Self::Item),
-    {
-        self.inner.for_each(f)
-    }
-
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
     where
         P: FnMut(&Self::Item) -> bool,
     {
         self.inner.find(predicate)
-    }
-
-    fn find_map<B, Func>(&mut self, f: Func) -> Option<B>
-    where
-        Func: FnMut(Self::Item) -> Option<B>,
-    {
-        self.inner.find_map(f)
-    }
-
-    fn position<P>(&mut self, predicate: P) -> Option<usize>
-    where
-        P: FnMut(Self::Item) -> bool,
-    {
-        self.inner.position(predicate)
-    }
-
-    fn any<P>(&mut self, predicate: P) -> bool
-    where
-        P: FnMut(Self::Item) -> bool,
-    {
-        self.inner.any(predicate)
-    }
-
-    fn all<P>(&mut self, predicate: P) -> bool
-    where
-        P: FnMut(Self::Item) -> bool,
-    {
-        self.inner.all(predicate)
     }
 }
 
@@ -308,10 +234,6 @@ where
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back()
-    }
-
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        self.inner.nth_back(n)
     }
 
     fn rfold<B, Func>(self, init: B, f: Func) -> B
@@ -337,6 +259,21 @@ where
 }
 
 /// Extension methods for conditionally appending iterators.
+///
+/// # Examples
+///
+/// ```
+/// use chain_if::ChainIfExt;
+///
+/// let values: Vec<_> = (0..3)
+///     .chain_if(true, 3..5)
+///     .chain_if_lazy(false, || 5..7)
+///     .chain_if_else(true, 7..9, [9, 10])
+///     .chain_if_else_lazy(false, || 11..13, || [13, 14])
+///     .collect();
+///
+/// assert_eq!(values, [0, 1, 2, 3, 4, 7, 8, 13, 14]);
+/// ```
 pub trait ChainIfExt: Iterator + Sized {
     /// Appends `iter` only when `condition` is `true`.
     ///
@@ -567,14 +504,13 @@ mod tests {
         assert_eq!(it.next(), None);
         assert_eq!(it.next_back(), None);
     }
+
     #[test]
+    #[allow(clippy::unnecessary_fold)]
     fn delegated_forward_methods() {
         assert_eq!((0..2).chain_if(true, 2..5).count(), 5);
         assert_eq!((0..2).chain_if_lazy(true, || 2..5).last(), Some(4));
-        #[allow(clippy::unnecessary_fold)]
-        {
-            assert_eq!((0..2).chain_if(true, 2..5).fold(0, |a, x| a + x), 10);
-        }
+        assert_eq!((0..2).chain_if(true, 2..5).fold(0, |a, x| a + x), 10);
 
         let mut it = (0..2).chain_if_lazy(true, || 2..5);
         assert_eq!(it.nth(2), Some(2));
@@ -610,5 +546,51 @@ mod tests {
                 .rfold(0, |a, x| a * 10 + x),
             43210
         );
+    }
+
+    // Tracks whether the inner iterator's specialized consuming methods are used.
+    struct Spy<'a> {
+        range: core::ops::Range<i32>,
+        hits: &'a Cell<u32>,
+    }
+
+    impl Iterator for Spy<'_> {
+        type Item = i32;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.range.next()
+        }
+
+        fn fold<B, Func>(self, init: B, f: Func) -> B
+        where
+            Func: FnMut(B, Self::Item) -> B,
+        {
+            self.hits.set(self.hits.get() + 1);
+            self.range.fold(init, f)
+        }
+
+        fn count(self) -> usize {
+            self.hits.set(self.hits.get() + 1);
+            self.range.count()
+        }
+    }
+
+    #[test]
+    fn tails_forward_internal_iteration() {
+        let hits = Cell::new(0);
+        let spy = || Spy {
+            range: 2..5,
+            hits: &hits,
+        };
+
+        assert_eq!((0..2).chain_if(true, spy()).sum::<i32>(), 10);
+        assert_eq!(hits.replace(0), 1, "eager fold");
+        assert_eq!((0..2).chain_if(true, spy()).count(), 5);
+        assert_eq!(hits.replace(0), 1, "eager count");
+
+        assert_eq!((0..2).chain_if_lazy(true, spy).sum::<i32>(), 10);
+        assert_eq!(hits.replace(0), 1, "lazy fold");
+        assert_eq!((0..2).chain_if_lazy(true, spy).count(), 5);
+        assert_eq!(hits.replace(0), 1, "lazy count");
     }
 }
